@@ -47,11 +47,30 @@ def mm(*args)
   USB.merge_mouse_report(*args)
 end
 
+@spd = {x: 0, y: 0}
+@last = {}
+
+def fit_i8(i)
+  if i > 127
+    127
+  elsif i < -128
+    -128
+  else
+    i
+  end
+end
+
 def mouse_cmd(kbd, wheel, xy, multi)
-  accelerate = (kbd.layer.to_s == "lower") ? 2 : 10
+  current = Machine.board_millis
+  if @last[xy].nil? || current - @last[xy] > 300
+    @spd[xy] = 1
+  else
+    @spd[xy] += 1
+  end
+  speed = (kbd.layer.to_s == "lower") ? @spd[xy] * 10 : @spd[xy]
   m = kbd.mouse
-  ws = m.wheel_speed * multi * accelerate
-  cs = m.cursor_speed * multi * accelerate
+  ws = fit_i8(m.wheel_speed * multi * speed)
+  cs = fit_i8(m.cursor_speed * multi * speed)
   if wheel
     if xy == :x
       mm(0, 0, 0, ws, 0)
@@ -65,6 +84,7 @@ def mouse_cmd(kbd, wheel, xy, multi)
       mm(0, 0, cs, 0, 0)
     end
   end
+  @last[xy] = current
 end
 
 def raised?(kbd)
