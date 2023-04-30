@@ -50,11 +50,11 @@ end
 @spd = {x: 0, y: 0}
 @last = {}
 
-def fit_i8(i)
-  if i > 127
-    127
-  elsif i < -128
-    -128
+def clip_spd(i)
+  if i > 80
+    80
+  elsif i < -80
+    -80
   else
     i
   end
@@ -69,8 +69,8 @@ def mouse_cmd(kbd, wheel, xy, multi)
   end
   speed = (kbd.layer.to_s == "lower") ? @spd[xy] * 10 : @spd[xy]
   m = kbd.mouse
-  ws = fit_i8(m.wheel_speed * multi * speed)
-  cs = fit_i8(m.cursor_speed * multi * speed)
+  ws = clip_spd(m.wheel_speed * multi * speed)
+  cs = clip_spd(m.cursor_speed * multi * speed)
   if wheel
     if xy == :x
       mm(0, 0, 0, ws, 0)
