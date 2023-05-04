@@ -7,13 +7,13 @@ kbd = Keyboard.new
 
 kbd.split = true
 
-# Initialize GPIO assign for Sparkfun Pro Micro RP2040
+# Init GPIO assign for RP2040
 kbd.init_pins(
   [ 4, 5, 6, 7, 8 ],             # row0, row1,... respectively
   [ 29, 28, 27, 26, 22, 20, 23 ] # col0, col1,... respectively
 )
 
-# default layer should be added at first
+# default should be added first
 kbd.add_layer :default, %i[
   KC_GRAVE  KC_1     KC_2     KC_3      KC_4    KC_5   KC_NO    KC_NO    KC_6   KC_7     KC_8     KC_9     KC_0   KC_DELETE
   KC_TAB    KC_QUOTE KC_COMM  KC_DOT    KC_P    KC_Y   KC_NO    KC_NO    KC_F   KC_G     KC_C     KC_R     KC_L   KC_BSPACE
@@ -49,6 +49,7 @@ end
 
 @spd = {x: 0, y: 0}
 @last = {}
+@idx = {x: 0, y: 0}
 
 def clip_spd(i)
   if i > 80
@@ -60,17 +61,21 @@ def clip_spd(i)
   end
 end
 
-def mouse_cmd(kbd, wheel, xy, multi)
+def mouse_cmd(kbd, wheel, xy, dir)
+  acc = [1, 1, 5, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 50, 0, 0, 0]
   current = Machine.board_millis
-  if @last[xy].nil? || current - @last[xy] > 300
-    @spd[xy] = 1
+  if @last[xy].nil? || current - @last[xy] > 200 || @spd[xy] * dir < 0
+    @spd[xy] = dir
+    @idx[xy] = 0
   else
-    @spd[xy] += 1
+    a = acc[@idx[xy]] || 0
+    @spd[xy] += a * dir
+    @idx[xy] += 1
   end
   speed = (kbd.layer.to_s == "lower") ? @spd[xy] * 10 : @spd[xy]
   m = kbd.mouse
-  ws = clip_spd(m.wheel_speed * multi * speed)
-  cs = clip_spd(m.cursor_speed * multi * speed)
+  ws = clip_spd(m.wheel_speed * speed)
+  cs = clip_spd(m.cursor_speed * speed)
   if wheel
     if xy == :x
       mm(0, 0, 0, ws, 0)
@@ -94,7 +99,6 @@ end
 # Initialize RotaryEncoder with pin_a and pin_b
 encoder_left = RotaryEncoder.new(21, 9)
 encoder_left.configure :left
-# These implementations are still ad-hoc
 encoder_left.clockwise do
   mouse_cmd(kbd, raised?(kbd), :y, 1)
 end
@@ -105,7 +109,6 @@ kbd.append encoder_left
 
 encoder_right = RotaryEncoder.new(21, 9)
 encoder_right.configure :right
-# These implementations are still ad-hoc
 encoder_right.clockwise do
   mouse_cmd(kbd, raised?(kbd), :x, 1)
 end
